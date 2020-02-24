@@ -1,43 +1,36 @@
 package co.rinda.rmitesting;
 
 import java.awt.BorderLayout;
-import java.awt.LayoutManager;
+import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
-import java.rmi.server.*;
-
-import javax.swing.DefaultListModel;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.ListModel;
 
 public class ClientOperation {
 	private static RMIInterface lookUp;
 	
 	public static void main(String[] args) throws MalformedURLException, RemoteException, NotBoundException {
 		lookUp = (RMIInterface) Naming.lookup("rmi://127.0.0.1:8080/MyServer");
+	
 		
 		ClientOperation.userInterface(lookUp);
 		
 	}
 	
-	private static void userInterface(RMIInterface lookUp) {
+	private static void userInterface(RMIInterface lookUp) throws RemoteException {
 		ClientOperation.createInterface(lookUp);
 		
 	}
 	
-	
-	private static void createInterface(RMIInterface lookUp) {
+	private static void createInterface(RMIInterface lookUp) throws RemoteException {
 		// TODO Auto-generated constructor stub
 		JFrame frame = new JFrame("Payment card detection system");
 		JButton checkPaymentCard = new JButton("Identify payment card.");
@@ -46,15 +39,9 @@ public class ClientOperation {
 		JPanel top = new JPanel(new BorderLayout());
 		JPanel bottom = new JPanel(new BorderLayout());
 		JList<String> currencyList;
-		DefaultListModel<String> listModel = new DefaultListModel<String>();
-		listModel.addElement("Currency rate.");
-		listModel.addElement("1 USD = 1452 MMK");
-		listModel.addElement("1 SGD = 1036 MMK");
-		listModel.addElement("1 EUR = 1570 MMK");
-		listModel.addElement("1 JPY = 1298 MMK");
-		listModel.addElement("1 CAD = 1094 MMK");
-		listModel.addElement("1 THB =   45 MMK");
-		currencyList = new JList<String>(listModel);
+		
+		
+		currencyList = new JList<String>(lookUp.getCurrencyList());
 		
 		checkPaymentCard.addActionListener(new ActionListener() {
 			
@@ -66,14 +53,14 @@ public class ClientOperation {
 				try {
 					response = ClientOperation.askQuestionForCardIdentification(lookUp);
 					toCheckInt = Long.parseLong(response);
-	            	ClientOperation.detectCardNumber(Long.parseLong(response));
+	            	ClientOperation.detectCardNumber(Long.parseLong(response), lookUp);
 	            	int userChoice = JOptionPane.showConfirmDialog(null, "Do you want to identify another card?", "Detect your credit card.", JOptionPane.YES_NO_OPTION);
 	            	if (userChoice == 1) {
 	            		JOptionPane.showMessageDialog(null, "Thanks for using our system");
 	            	}else {
 	            		do {
 	            			String fromResponse = ClientOperation.askQuestionForCardIdentification(lookUp);
-	            			ClientOperation.detectCardNumber(Long.parseLong(fromResponse));
+	            			ClientOperation.detectCardNumber(Long.parseLong(fromResponse), lookUp);
 	            			userChoice = JOptionPane.showConfirmDialog(null, "Do you want to identify another card?", "Detect your credit card.", JOptionPane.YES_NO_OPTION);
 	            		} while (userChoice == 0);
 	            		JOptionPane.showMessageDialog(null, "Thanks for using our system");
@@ -113,8 +100,8 @@ public class ClientOperation {
 		return txt;
 	}
 	
-	private static void detectCardNumber(Long cardNumber) {
-		if (isValid(cardNumber)) {
+	private static void detectCardNumber(Long cardNumber, RMIInterface lookUp) throws HeadlessException, RemoteException {
+		if (lookUp.isValidCardNumber(cardNumber)) {
 			System.out.println("Card number is " + cardNumber);
 			System.out.println("Card number to Strnig is " + cardNumber.toString());
 			System.out.println("First char of string is " + cardNumber.toString().charAt(0));
@@ -160,71 +147,4 @@ public class ClientOperation {
 		}
 	}
 	
-	// Return true if the card number is valid 
-    public static boolean isValid(long number) 
-    { 
-       return (getSize(number) >= 13 &&  
-               getSize(number) <= 16) &&  
-               (prefixMatched(number, 4) ||  
-                prefixMatched(number, 5) ||  
-                prefixMatched(number, 37) ||  
-                prefixMatched(number, 6)) &&  
-              ((sumOfDoubleEvenPlace(number) +  
-                sumOfOddPlace(number)) % 10 == 0); 
-    } 
-  
-    // Get the result from Step 2 
-    public static int sumOfDoubleEvenPlace(long number) 
-    { 
-        int sum = 0; 
-        String num = number + ""; 
-        for (int i = getSize(number) - 2; i >= 0; i -= 2)  
-            sum += getDigit(Integer.parseInt(num.charAt(i) + "") * 2); 
-          
-        return sum; 
-    } 
-  
-    // Return this number if it is a single digit, otherwise, 
-    // return the sum of the two digits 
-    public static int getDigit(int number) 
-    { 
-        if (number < 9) 
-            return number; 
-        return number / 10 + number % 10; 
-    } 
-  
-    // Return sum of odd-place digits in number 
-    public static int sumOfOddPlace(long number) 
-    { 
-        int sum = 0; 
-        String num = number + ""; 
-        for (int i = getSize(number) - 1; i >= 0; i -= 2)  
-            sum += Integer.parseInt(num.charAt(i) + "");         
-        return sum; 
-    } 
-  
-    // Return true if the digit d is a prefix for number 
-    public static boolean prefixMatched(long number, int d) 
-    { 
-        return getPrefix(number, getSize(d)) == d; 
-    } 
-  
-    // Return the number of digits in d 
-    public static int getSize(long d) 
-    { 
-        String num = d + ""; 
-        return num.length(); 
-    } 
-  
-    // Return the first k number of digits from  
-    // number. If the number of digits in number 
-    // is less than k, return number. 
-    public static long getPrefix(long number, int k) 
-    { 
-        if (getSize(number) > k) { 
-            String num = number + ""; 
-            return Long.parseLong(num.substring(0, k)); 
-        } 
-        return number; 
-    } 
 }
